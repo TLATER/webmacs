@@ -277,3 +277,12 @@ define_variable(
     False,
     type=Bool()
 )
+
+define_variable(
+    "javascript-whitelist",
+    "A list of domains allowed to execute javascript. This does currently"
+    " not prohibit inline javascript, and may cause significant slowdowns"
+    " when the list is large. Use with care.",
+    (),
+    type=List(String())
+)

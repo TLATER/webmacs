@@ -16,15 +16,18 @@
 import os
 import sys
 import logging
+import urllib
 
 from PyQt5.QtCore import pyqtSlot as Slot, Qt
 
 from PyQt5.QtWebEngineWidgets import QWebEngineSettings
 from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
+from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInfo
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtNetwork import QNetworkAccessManager
 
 from . import require
+from . import variables
 from . import version
 from .adblock import Adblocker, AdblockUpdateRunner, adblock_urls_rules
 from .download_manager import DownloadManager
@@ -60,6 +63,13 @@ class UrlInterceptor(QWebEngineUrlRequestInterceptor):
             self._adblock = Adblocker(app.adblock_path()).local_adblock()
         self._use_adblock = True
 
+        self._js_whitelist = variables.get("javascript-whitelist")
+        if self._js_whitelist:
+            self._use_noscript = True
+
+        logging.info("Whitelist: %s", self._js_whitelist)
+
+
     @Slot(object)
     def update_adblock(self, adblock):
         self._adblock = adblock
@@ -77,6 +87,13 @@ class UrlInterceptor(QWebEngineUrlRequestInterceptor):
                 request.firstPartyUrl().toString())):
             logging.info("filtered: %s", url_s)
             request.block(True)
+
+        if self._js_whitelist:
+            if request.resourceType() == QWebEngineUrlRequestInfo.ResourceTypeScript:
+                domain = urllib.parse.urlparse(url_s)[1]
+                if (domain not in self._js_whitelist):
+                    logging.info("filtered: %s", url_s)
+                    request.block(True)
 
 
 class WithoutAppEventFilter(object):
